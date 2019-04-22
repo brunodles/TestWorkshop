@@ -1,3 +1,4 @@
 <resources>
   <string name="app_name">ConcreteTestes</string>
+  <string name="login_button">Login</string>
 </resources>
