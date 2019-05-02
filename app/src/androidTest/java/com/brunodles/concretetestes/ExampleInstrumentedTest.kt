@@ -1,11 +1,7 @@
 package com.brunodles.concretetestes
 
 import android.app.Activity
-import android.app.Instrumentation
 import android.app.Instrumentation.*
-import android.content.Intent
-import android.os.Bundle
-import android.support.test.InstrumentationRegistry
 import android.support.test.espresso.Espresso.onView
 import android.support.test.espresso.action.ViewActions
 import android.support.test.espresso.action.ViewActions.click
@@ -23,7 +19,6 @@ import android.support.test.runner.AndroidJUnit4
 import org.junit.Test
 import org.junit.runner.RunWith
 
-import org.junit.Assert.*
 import org.junit.Rule
 
 @RunWith(AndroidJUnit4::class)
@@ -35,55 +30,127 @@ class ExampleInstrumentedTest {
 
     @Test
     fun whenOpen_shouldStartWithEmptyUsername_andPassword() {
-        onView(withId(R.id.username)).check(matches(isDisplayed()))
-        onView(withId(R.id.username)).check(matches(withText("")))
-        onView(withId(R.id.password)).check(matches(isDisplayed()))
-        onView(withId(R.id.password)).check(matches(withText("")))
+        loginAssert {
+            isUsernameEmpty()
+            isPasswordEmpty()
+        }
     }
 
     @Test
     fun whenLogin_withoutUsername_shouldShowEmptyUsernameMessage() {
-        onView(withId(R.id.password)).perform(ViewActions.typeText("admin"))
+        loginRobot {
+            password("admin")
+            login()
+        }
 
-        onView(withText(R.string.login_button)).perform(click())
-
-        onView(withText("Empty Username")).check(matches(isDisplayed()))
+        loginAssert {
+            isEmptyUsernameMessageDisplayed()
+        }
     }
 
     @Test
     fun whenLogin_withoutPassword_shouldShowEmptyPasswordMessage() {
-        onView(withId(R.id.username)).perform(ViewActions.typeText("admin"))
+        loginRobot {
+            username("admin")
+            login()
+        }
 
-        onView(withId(R.id.login)).perform(click())
-
-        onView(withText("Empty Password")).check(matches(isDisplayed()))
-    }
-
-    @Test
-    fun whenLogin_withValidUsername_andPassword_shouldCallHomeActivity() {
-        Intents.init()
-        val homeActivityIntentMatcher = IntentMatchers.hasComponent(HomeActivity::class.java.name)
-        intending(homeActivityIntentMatcher)
-            .respondWith(ActivityResult(Activity.RESULT_CANCELED, null))
-
-        onView(withId(R.id.username)).perform(typeText("brunodles"))
-        onView(withId(R.id.password)).perform(typeText("Ab.345678"))
-
-        onView(withId(R.id.login)).perform(click())
-
-        intended(homeActivityIntentMatcher)
-
-        Intents.release()
+        loginAssert {
+            isEmptyPasswordMessageDisplayed()
+        }
     }
 
     @Test
     fun whenLogin_withInvalidPassword_shouldShowInvalidLoginOrPasswordMessage() {
-        onView(withId(R.id.username)).perform(typeText("brunodles"))
-        onView(withId(R.id.password)).perform(typeText("1234567"))
+        loginRobot {
+            username("brunodles")
+            password("1234567")
+            login()
+        }
+        loginAssert {
+            isInvalidUsernameOrPasswordMessageDispplayed()
+        }
+    }
 
-        onView(withId(R.id.login)).perform(click())
+    @Test
+    fun whenLogin_withValidUsername_andPassword_shouldCallHomeActivity() {
+        loginArrange {
+            mockHomeActivity()
+        }
 
-        onView(withText("Invalid Username or Password")).check(matches(isDisplayed()))
+        loginRobot {
+            username("brunodles")
+            password("Ab.345678")
+            login()
+        }
+
+        loginAssert {
+            homeActivityWasCalled()
+        }
+
+    }
+}
+
+class loginArrange(block: loginArrange.() -> Unit) {
+    fun mockHomeActivity() {
+        intending(IntentMatchers.hasComponent(HomeActivity::class.java.name))
+            .respondWith(ActivityResult(Activity.RESULT_CANCELED, null))
+    }
+
+    init {
+        block(this)
+    }
+
+}
+class loginRobot(block: loginRobot.() -> Unit) {
+    fun password(password: String) {
+        onView(withId(R.id.password)).perform(ViewActions.typeText(password))
+    }
+
+    fun login() {
+        onView(withText(R.string.login_button)).perform(click())
+    }
+
+    fun username(username: String) {
+        onView(withId(R.id.username)).perform(ViewActions.typeText(username))
+    }
+
+    init {
+        block(this)
+    }
+
+
+}
+class loginAssert(block: loginAssert.() ->  Unit) {
+
+    init {
+        block.invoke(this)
+    }
+
+    fun isUsernameEmpty() = isViewEmpty(R.id.username)
+
+    fun isPasswordEmpty() = isViewEmpty(R.id.password)
+
+    private fun isViewEmpty(view: Int) {
+        onView(withId(view)).check(matches(isDisplayed()))
+        onView(withId(view)).check(matches(withText("")))
+    }
+
+    fun isEmptyUsernameMessageDisplayed() =
+        isMessageDisplayed("Empty Username")
+
+    fun isEmptyPasswordMessageDisplayed() =
+        isMessageDisplayed("Empty Password")
+
+    fun isInvalidUsernameOrPasswordMessageDispplayed() =
+        isMessageDisplayed("Invalid Username or Password")
+
+    private fun isMessageDisplayed(message: String) {
+        onView(withText(message)).check(matches(isDisplayed()))
+    }
+
+    fun homeActivityWasCalled() {
+        intended(IntentMatchers.hasComponent(HomeActivity::class.java.name))
     }
 
 }
